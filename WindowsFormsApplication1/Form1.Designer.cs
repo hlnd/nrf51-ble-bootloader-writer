@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.Windows.Forms.Label selectedFileHeader;
             this.logBox = new System.Windows.Forms.TextBox();
             this.deviceBox = new System.Windows.Forms.ListBox();
             this.connectButton = new System.Windows.Forms.Button();
@@ -38,6 +39,8 @@
             this.selectFileButton = new System.Windows.Forms.Button();
             this.startButton = new System.Windows.Forms.Button();
             this.progressBar = new System.Windows.Forms.ProgressBar();
+            this.selectedFilePath = new System.Windows.Forms.TextBox();
+            selectedFileHeader = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // logBox
@@ -60,6 +63,7 @@
             // 
             // connectButton
             // 
+            this.connectButton.Enabled = false;
             this.connectButton.Location = new System.Drawing.Point(12, 246);
             this.connectButton.Name = "connectButton";
             this.connectButton.Size = new System.Drawing.Size(210, 23);
@@ -99,7 +103,7 @@
             // 
             // selectFileButton
             // 
-            this.selectFileButton.Location = new System.Drawing.Point(455, 12);
+            this.selectFileButton.Location = new System.Drawing.Point(238, 137);
             this.selectFileButton.Name = "selectFileButton";
             this.selectFileButton.Size = new System.Drawing.Size(75, 23);
             this.selectFileButton.TabIndex = 6;
@@ -109,6 +113,7 @@
             // 
             // startButton
             // 
+            this.startButton.Enabled = false;
             this.startButton.Location = new System.Drawing.Point(455, 137);
             this.startButton.Name = "startButton";
             this.startButton.Size = new System.Drawing.Size(75, 23);
@@ -121,14 +126,34 @@
             // 
             this.progressBar.Location = new System.Drawing.Point(238, 182);
             this.progressBar.Name = "progressBar";
-            this.progressBar.Size = new System.Drawing.Size(292, 44);
+            this.progressBar.Size = new System.Drawing.Size(292, 25);
+            this.progressBar.Step = 1;
             this.progressBar.TabIndex = 8;
+            // 
+            // selectedFileHeader
+            // 
+            selectedFileHeader.AutoSize = true;
+            selectedFileHeader.Location = new System.Drawing.Point(238, 51);
+            selectedFileHeader.Name = "selectedFileHeader";
+            selectedFileHeader.Size = new System.Drawing.Size(65, 13);
+            selectedFileHeader.TabIndex = 9;
+            selectedFileHeader.Text = "Selected file";
+            // 
+            // selectedFilePath
+            // 
+            this.selectedFilePath.Location = new System.Drawing.Point(238, 67);
+            this.selectedFilePath.Name = "selectedFilePath";
+            this.selectedFilePath.Size = new System.Drawing.Size(292, 20);
+            this.selectedFilePath.TabIndex = 11;
+            this.selectedFilePath.Text = "-";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(819, 281);
+            this.Controls.Add(this.selectedFilePath);
+            this.Controls.Add(selectedFileHeader);
             this.Controls.Add(this.progressBar);
             this.Controls.Add(this.startButton);
             this.Controls.Add(this.selectFileButton);
@@ -157,6 +182,7 @@
         private System.Windows.Forms.Button selectFileButton;
         private System.Windows.Forms.Button startButton;
         private System.Windows.Forms.ProgressBar progressBar;
+        private System.Windows.Forms.TextBox selectedFilePath;
     }
 }
 

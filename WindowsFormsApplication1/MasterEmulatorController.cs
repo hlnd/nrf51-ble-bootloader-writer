@@ -12,7 +12,7 @@ namespace BootloaderWriter
 {
     public enum MasterEmulatorControllerCommand : byte
     {
-        Nop,
+        Nop = 0,
         EraseApp,
         WriteLine,
         ResetAndRun,
@@ -28,8 +28,12 @@ namespace BootloaderWriter
         public event DeviceDiscoveredHandler DeviceDiscovered;
         public delegate void LogMessageHandler(object sender, string message);
         public event LogMessageHandler LogMessage;
-        public delegate void ResponseHandler(object sender, bool success);
+        public delegate void ResponseHandler(object sender, byte error);
         public event ResponseHandler ResponseReceived;
+        public delegate void ConnectedHandler(object sender, BtDevice device);
+        public event ConnectedHandler Connected;
+        public delegate void DisconnectedHandler(object sender, BtDevice device);
+        public event DisconnectedHandler Disconnected;
 
         public bool IsOpen
         {
@@ -47,6 +51,12 @@ namespace BootloaderWriter
         public MasterEmulatorController()
         {
             masterEmulator = new MasterEmulator();
+
+            masterEmulator.DeviceDiscovered += onDeviceDiscovered;
+            masterEmulator.Connected += onDeviceConnected;
+            masterEmulator.Disconnected += onDeviceDisconnected;
+            masterEmulator.DataReceived += onDataReceived;
+            masterEmulator.LogMessage += onLogMessage;
         }
 
         public List<String> GetEmulators()
@@ -60,7 +70,7 @@ namespace BootloaderWriter
 
             masterEmulator.SetupAddService(new BtUuid(0x1000, baseUUID), PipeStore.Remote);
 
-            masterEmulator.SetupAddCharacteristicDefinition(new BtUuid(0x2000, baseUUID), 1, new byte[] { 0x00 });
+            masterEmulator.SetupAddCharacteristicDefinition(new BtUuid(0x2000, baseUUID), 1, null);
             commandPipe = masterEmulator.SetupAssignPipe(PipeType.TransmitWithAck);
 
             masterEmulator.SetupAddCharacteristicDefinition(new BtUuid(0x2001, baseUUID), 1, null);
@@ -75,12 +85,6 @@ namespace BootloaderWriter
         {
             masterEmulator.LogVerbosity = Verbosity.High;
             masterEmulator.Open(emulator);
-
-            masterEmulator.DeviceDiscovered += onDeviceDiscovered;
-            masterEmulator.Connected += onDeviceConnected;
-            masterEmulator.Disconnected += onDeviceDisconnected;
-            masterEmulator.DataReceived += onDataReceived;
-            masterEmulator.LogMessage += onLogMessage;
 
             setupPipes();
 
@@ -105,9 +109,9 @@ namespace BootloaderWriter
                 masterEmulator.StopDeviceDiscovery();
 
             BtConnectionParameters connParams = new BtConnectionParameters();
-            connParams.ConnectionIntervalMs = 10;
+            connParams.ConnectionIntervalMs = 7.5;
             connParams.SlaveLatency = 0;
-            connParams.SupervisionTimeoutMs = 1000;
+            connParams.SupervisionTimeoutMs = 100;
             
             connectedDevice = device;
             
@@ -165,7 +169,10 @@ namespace BootloaderWriter
 
                 masterEmulator.OpenAllRemotePipes();
             };
-
+            bw.RunWorkerCompleted += delegate
+            {
+                Connected(this, connectedDevice);
+            };
             bw.RunWorkerAsync();
         }
 
@@ -175,9 +182,8 @@ namespace BootloaderWriter
 
             bw.DoWork += delegate
             {
-                this.Connect(connectedDevice);
+                Disconnected(this, connectedDevice);
             };
-
             bw.RunWorkerAsync();
         }
 
@@ -198,7 +204,7 @@ namespace BootloaderWriter
 
             bw.DoWork += delegate
             {
-                ResponseReceived(this, e.PipeData[0] == 0x00);
+                ResponseReceived(this, e.PipeData[0]);
             };
             bw.RunWorkerAsync(e);
         }

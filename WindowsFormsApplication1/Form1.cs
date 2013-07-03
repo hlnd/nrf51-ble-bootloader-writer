@@ -24,8 +24,18 @@ namespace BootloaderWriter
             InitializeComponent();
 
             mec.DeviceDiscovered += DeviceDiscovered;
+            mec.Connected += Connected;
+            mec.Disconnected += Disconnected;
             mec.ResponseReceived += ResponseReceived;
             mec.LogMessage += LogMessage;
+
+            selectFileDialog.FileOk += delegate
+            {
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    selectedFilePath.Text = this.selectFileDialog.FileName;
+                });
+            };
 
             foreach (var emulator in mec.GetEmulators())
                 emulatorBox.Items.Add(emulator);
@@ -40,10 +50,31 @@ namespace BootloaderWriter
         private void DeviceDiscovered(object sender, BtDevice dev)
         {
 
-            logBox.BeginInvoke((MethodInvoker) delegate()
+            BeginInvoke((MethodInvoker) delegate()
             {
                 logBox.AppendText("New device found.\n");
                 deviceBox.Items.Add(dev);
+            });
+        }
+
+        private void Connected(object sender, BtDevice dev)
+        {
+            BeginInvoke((MethodInvoker) delegate()
+            {
+                logBox.AppendText("Connected.\n");
+                startButton.Enabled = true;
+                connectButton.Enabled = true;
+                connectButton.Text = "Disconnect";
+            });
+        }
+
+        private void Disconnected(object sender, BtDevice dev)
+        {
+            BeginInvoke((MethodInvoker)delegate()
+            {
+                startButton.Enabled = false;
+                connectButton.Enabled = true;
+                connectButton.Text = "Connect";
             });
         }
 
@@ -55,26 +86,22 @@ namespace BootloaderWriter
             });
         }
 
-        private void ResponseReceived(object sender, bool success)
+        private void ResponseReceived(object sender, byte error)
         {
             BeginInvoke((MethodInvoker)delegate()
             {
-                logBox.AppendText(String.Format("Received response: {0}\n", success));
+                logBox.AppendText(String.Format("Received response: {0}\n", error));
             });
         }
 
-        private void WriteFailure(object sender, HexFileController.HexFileControllerStates state, int line)
+        private void WriteFailure(object sender, HexFileController.HexFileControllerStates state, byte error, int line)
         {
-            BeginInvoke((MethodInvoker)delegate()
-            {
-                this.logBox.AppendText(String.Format("Failed in state {0}, line {1}", state, line));
-            });
+            
         }
 
         private void selectFileButton_Click(object sender, EventArgs e)
         {
             selectFileDialog.ShowDialog();
-
         }
 
         private void openButton_Click(object sender, EventArgs e)
@@ -83,11 +110,16 @@ namespace BootloaderWriter
             {
                 openButton.Text = "Open";
                 mec.CloseEmulator();
+
+                connectButton.Enabled = false;
+                startButton.Enabled = false;
             }
             else
             {
                 openButton.Text = "Close";
                 mec.OpenEmulator((string) emulatorBox.SelectedItem);
+
+                connectButton.Enabled = true;
 
                 mec.StartScan();
             }
@@ -99,50 +131,51 @@ namespace BootloaderWriter
             if (mec.IsConnected)
             {
                 mec.Disconnect();
-                connectButton.Text = "Connect";
-                
+                connectButton.Text = "Disconnecting...";
+                connectButton.Enabled = false;
             }
             else
             {
                 mec.Connect((BtDevice) deviceBox.SelectedItem);
-                connectButton.Text = "Disconnect";
+                connectButton.Text = "Connecting...";
+                connectButton.Enabled = false;
             }
         }
 
         private void startButton_Click(object sender, EventArgs e)
         {
-            HexFileController hfc = new HexFileController(mec, selectFileDialog.FileName);
-            hfc.Failure += WriteFailure;
-            hfc.StartWriting();
-            
-            
-                //masterEmulator.SendData(commandPipe, new byte[] {0x01});
-                /*
-                foreach (string trimmedLine in File.ReadLines(selectFileDialog.FileName))
+            connectButton.Enabled = false;
+            startButton.Enabled = false;
+            selectFileButton.Enabled = false;
+
+            HexFileController hfc = new HexFileController(mec, selectedFilePath.Text);
+            hfc.Failure += (s, state, error, line) =>
+            {
+                BeginInvoke((MethodInvoker)delegate
                 {
-                    string line = trimmedLine+"\n";
-
-                    int remaining = line.Length;
-                    for (int i = 0; i < line.Length; i += 20, remaining -= 20)
-                    {
-                        
-                        byte[] buffer = System.Text.Encoding.ASCII.GetBytes(line.Substring(i, (remaining > 20 ? 20 : remaining)));
-
-                        try
-                        {
-                            masterEmulator.SendData(dataPipe, buffer);
-                        }
-                        catch (Exception exception)
-                        {
-                            logBox.AppendText("Something failed...");
-                            return;
-                        }
-                    }
-                    System.Threading.Thread.Sleep(50);
-                    
-                }
-                logBox.AppendText("Finished sending.");*/
+                    this.logBox.AppendText(String.Format("Failed in state {0}, with error {1}, on line {2}", state, error, line));
+                });
+            };
             
+
+            hfc.Progress += (s, progress) =>
+            {
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    progressBar.Value = progress;
+                });
+            };
+            hfc.Finished += (s) =>
+            {
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    logBox.AppendText("Finished\n");
+                    connectButton.Enabled = true;
+                    startButton.Enabled = true;
+                    selectFileButton.Enabled = true;
+                });
+            };
+            hfc.StartWriting();
         }
 
     }
